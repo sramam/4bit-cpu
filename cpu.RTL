@@ -1,0 +1,23 @@
+Registers:
+    A (4-bit accumulator)
+    B (4-bit general-purpose register)
+    PC (program counter)
+    IR (instruction register)
+    FLAGS (carry flag, zero flag)
+
+Instruction Set:
+    1. LOAD A, imm (Load immediate value into register A)
+    2. LOAD B, imm (Load immediate value into register B)
+    3. ADD A, B (Add registers A and B, store the result in A)
+    4. SUB A, B (Subtract B from A, store the result in A)
+    5. STORE A, B (Store the value of A into B)
+    6. JMP imm (Jump to address imm)
+    7. JZ imm (Jump to address imm if zero flag is set)
+    8. JC imm (Jump to address imm if carry flag is set)
+    9. HLT (Halt the CPU)
+
+Control Unit State Machine:
+    1. Fetch: Read instruction from memory at address PC, store it in IR, increment PC
+    2. Decode: Interpret the opcode in IR and set control signals accordingly
+    3. Execute: Perform the operation specified by the control signals and update registers
+    4. Repeat steps 1-3 until a HLT instruction is encountered

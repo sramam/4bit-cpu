@@ -1,84 +1,111 @@
-const { cpu, memory, runCPU } = require('./cpu');
+const { cpu, memory, runCPU } = require("./cpu");
 
-describe('4-bit CPU Simulator', () => {
-    beforeEach(() => {
-        cpu.A = 0;
-        cpu.B = 0;
-        cpu.PC = 0;
-        cpu.IR = 0;
-        cpu.FLAGS = 0;
-    });
+const testPrograms = {
+  add: [
+    0x11, // LOAD A, 1
+    0x22, // LOAD B, 2
+    0x33, // ADD A, B
+    0x90, // HLT
+  ],
+  sub: [
+    0x11, // LOAD A, 1
+    0x22, // LOAD B, 2
+    0x43, // SUB A, B
+    0x90, // HLT
+  ],
+  store: [
+    0x11, // LOAD A, 1
+    0x53, // STORE A, B
+    0x90, // HLT
+  ],
+  jmp: [
+    0x16, // JMP 6
+    0x90, // HLT (should not be executed)
+    0x11, // LOAD A, 1
+    0x90, // HLT
+  ],
+  jz: [
+    0x11, // LOAD A, 1
+    0x43, // SUB A, B
+    0x76, // JZ 6
+    0x90, // HLT (should not be executed)
+    0x11, // LOAD A, 1
+    0x90, // HLT
+  ],
+  jc: [
+    0x11, // LOAD A, 1
+    0x43, // SUB A, B
+    0x86, // JC 6
+    0x90, // HLT (should not be executed)
+    0x11, // LOAD A, 1
+    0x90, // HLT
+  ],
+  unknownOpcode: [
+    0x11, // LOAD A, 1
+    0xa0, // Unknown opcode
+  ],
+};
 
-    test('Load, Add, Sub, Store, Jump, and Halt instructions', () => {
-        memory.splice(0, memory.length, ...[
-            0x11, // LOAD A, 1 (A = 1)
-            0x22, // LOAD B, 2 (B = 2)
-            0x33, // ADD A, B  (A = 3)
-            0x42, // SUB A, B  (A = 1)
-            0x51, // STORE A, B (B = 1)
-            0x90, // HLT (Halt the CPU)
-        ]);
+describe("4-bit CPU", () => {
+  beforeEach(() => {
+    // Reset the CPU state before each test
+    cpu.A = 0;
+    cpu.B = 0;
+    cpu.PC = 0;
+    cpu.IR = 0;
+    cpu.FLAGS = 0;
+  });
 
-        runCPU();
+  function loadProgram(program) {
+    for (let i = 0; i < program.length; i++) {
+      memory[i] = program[i];
+    }
+  }
 
-        expect(cpu.A).toBe(1);
-        expect(cpu.B).toBe(1);
-    });
+  test("ADD instruction", () => {
+    loadProgram(testPrograms.add);
+    runCPU();
+    expect(cpu.A).toBe(3);
+    expect(cpu.B).toBe(2);
+  });
 
-    test('JZ instruction when zero flag is set', () => {
-        memory.splice(0, memory.length, ...[
-            0x10, // LOAD A, 0 (A = 0)
-            0x70, // JZ 6 (Jump to address 6 if zero flag is set)
-            0x11, // LOAD A, 1 (A = 1)
-            0x90, // HLT (Halt the CPU)
-        ]);
+  test("SUB instruction", () => {
+    loadProgram(testPrograms.sub);
+    runCPU();
+    expect(cpu.A).toBe(15);
+    expect(cpu.B).toBe(2);
+  });
 
-        runCPU();
+  test("STORE instruction", () => {
+    loadProgram(testPrograms.store);
+    runCPU();
+    expect(cpu.A).toBe(1);
+    expect(cpu.B).toBe(1);
+  });
 
-        expect(cpu.A).toBe(0);
-    });
+  test("JMP instruction", () => {
+    loadProgram(testPrograms.jmp);
+    runCPU();
+    expect(cpu.A).toBe(1);
+  });
 
-    test('JZ instruction when zero flag is not set', () => {
-        memory.splice(0, memory.length, ...[
-            0x11, // LOAD A, 1 (A = 1)
-            0x70, // JZ 6 (Jump to address 6 if zero flag is set)
-            0x12, // LOAD A, 2 (A = 2)
-            0x90, // HLT (Halt the CPU)
-        ]);
+  test("JZ instruction", () => {
+    loadProgram(testPrograms.jz);
+    runCPU();
+    expect(cpu.A).toBe(1);
+  });
 
-        runCPU();
+  test("JC instruction", () => {
+    loadProgram(testPrograms.jc);
+    runCPU();
+    expect(cpu.A).toBe(1);
+  });
 
-        expect(cpu.A).toBe(2);
-    });
-
-    test('JC instruction when carry flag is set', () => {
-        memory.splice(0, memory.length, ...[
-            0x11, // LOAD A, 1 (A = 1)
-            0x26, // LOAD B, 6 (B = 6)
-            0x43, // SUB A, B (A = 11, Carry flag set)
-            0x80, // JC 8 (Jump to address 8 if carry flag is set)
-            0x12, // LOAD A, 2 (A = 2)
-            0x90, // HLT (Halt the CPU)
-        ]);
-
-        runCPU();
-
-        expect(cpu.A).toBe(11);
-    });
-
-    test('JC instruction when carry flag is not set', () => {
-      memory.splice(0, memory.length, ...[
-          0x11, // LOAD A, 1 (A = 1)
-          0x22, // LOAD B, 2 (B = 2)
-          0x33, // ADD A, B (A = 3, Carry flag not set)
-          0x80, // JC 8 (Jump to address 8 if carry flag is set)
-          0x14, // LOAD A, 4 (A = 4)
-          0x90, // HLT (Halt the CPU)
-      ]);
-
-      runCPU();
-
-      expect(cpu.A).toBe(4);
+  test("Unknown opcode", () => {
+    const consoleSpy = jest.spyOn(console, "log");
+    loadProgram(testPrograms.unknownOpcode);
+    runCPU();
+    expect(consoleSpy).toHaveBeenCalledWith("Unknown opcode: 0xa");
+    consoleSpy.mockRestore();
   });
 });
-
